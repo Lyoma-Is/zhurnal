@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1000, viewport-fit=cover">
+<title>Журнал</title>
+<style>
+:root{color-scheme:light;--bg:#eef1f5;--panel:#ffffff;--ink:#1f2937;--mute:#6b7280;--line:#d3d9e2;--acc:#2563eb;--accink:#ffffff;--bad:#dc2626;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{min-width:1000px;margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif}
+h1{font-size:30px;margin:0;letter-spacing:-.5px}
+#sync{font:12px system-ui,sans-serif;color:var(--mute);margin-top:2px}
+#sync.ok{color:#16a34a}
+#sync.err{color:var(--bad)}
+header{padding:20px 20px 8px;width:1000px;margin:0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+header .left{flex:1}
+header p{margin:2px 0 0;color:var(--mute);font-family:system-ui,sans-serif;font-size:14px}
+#userbar{display:none;font:13px system-ui,sans-serif;color:var(--mute);align-items:center;gap:10px;white-space:nowrap}
+#userbar.on{display:flex}
+#userbar b{color:var(--ink);font-weight:600}
+#btnLogout{padding:6px 12px;font-size:13px}
+main{width:1000px;margin:0 auto;padding:12px 20px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;font-family:system-ui,sans-serif}
+.top{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.top>*{min-width:0}
+#gf{margin-bottom:0}
+.gsel{display:flex;gap:6px;align-items:center}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+h2{font:700 18px Georgia,serif;margin:0 0 10px}
+form{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+input,select{flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+button{padding:9px 12px;border:0;border-radius:6px;background:var(--acc);color:var(--accink);font:600 14px system-ui,sans-serif;cursor:pointer}
+button.ghost{background:none;color:var(--mute);padding:4px 8px}
+button.ghost:hover{color:var(--bad)}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.g{display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.g.on{background:var(--bg);border-color:var(--acc);font-weight:600}
+.g small{color:var(--mute);font-weight:400}
+.tw{overflow-x:auto;border-top:1px solid var(--line)}
+table{border-collapse:collapse;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center;vertical-align:middle}
+th{font-weight:600;font-size:13px;color:var(--mute)}
+td.n{color:var(--mute);font-size:13px;width:28px}
+td.fio,th.fio{text-align:left;font-weight:600;min-width:170px;overflow-wrap:anywhere;position:sticky;left:0;background:var(--panel)}
+th.fio{font-weight:600}
+.c{width:46px;padding:6px 2px;text-align:center;border-radius:4px}
+select.c{appearance:none;-webkit-appearance:none;text-align:center;text-align-last:center;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+select.c option{background:#fff;color:#1f2937}
+select.c option[value="5"]{background:#16a34a;color:#fff}
+select.c option[value="4"]{background:#facc15;color:#1f2937}
+select.c option[value="3"]{background:#fb923c;color:#1f2937}
+select.c option[value="2"]{background:#dc2626;color:#fff}
+select.c option[value="н"]{background:#2563eb;color:#fff}
+select.v5{background:#16a34a;color:#fff;border-color:#16a34a}
+select.v4{background:#facc15;color:#1f2937;border-color:#facc15}
+select.v3{background:#fb923c;color:#1f2937;border-color:#fb923c}
+select.v2{background:#dc2626;color:#fff;border-color:#dc2626}
+select.vn{background:#2563eb;color:#fff;border-color:#2563eb}
+.mark{display:inline-block;min-width:36px;padding:6px 4px;border-radius:4px;font-weight:700;text-align:center}
+.mark.v5{background:#16a34a;color:#fff}
+.mark.v4{background:#facc15;color:#1f2937}
+.mark.v3{background:#fb923c;color:#1f2937}
+.mark.v2{background:#dc2626;color:#fff}
+.mark.vn{background:#2563eb;color:#fff}
+.hc{width:76px;padding:4px 2px;text-align:center;font-size:12px}
+.gh{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.gh label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--mute);flex:1;min-width:130px}
+.gh label:first-child{flex:2;min-width:180px}
+.gh input{font-size:15px}
+.gh label:first-child input{font:700 18px Georgia,serif}
+.fe{display:block;padding:2px 4px;border-radius:4px;cursor:text;outline-offset:2px}
+.fe:hover{background:var(--bg)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));z-index:10;font-family:system-ui,sans-serif}
+.dl{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:380px;width:100%}
+.dl h3{margin:0 0 6px;font:700 18px Georgia,serif}
+.dl p{margin:0 0 16px;color:var(--mute);overflow-wrap:anywhere}
+.dl .ex{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.lt{font-size:11px;font-weight:400;color:#fff;background:var(--mute);border-radius:4px;padding:1px 6px;margin-left:4px;white-space:nowrap}
+.lf td,.lf td.fio{background:#e5e7eb}
+.lf .fe{color:var(--mute)}
+.lf select.c{background:#d9dde3;color:var(--mute);border-color:#cbd1d9;cursor:not-allowed;opacity:1}
+.dl .bt{flex-wrap:wrap;display:flex;gap:8px;justify-content:flex-end}
+.dl .no{background:none;color:var(--ink);border:1px solid var(--line)}
+.pr{display:flex;gap:6px;justify-content:center;align-items:center}
+.per{flex:1;min-width:0;max-width:260px;text-align:center;font-weight:600}
+.sw h2{margin-bottom:8px}
+.sr{display:flex;align-items:center;gap:8px}
+.ar{background:none;color:var(--ink);border:1px solid var(--line);padding:8px 10px;font-size:13px;flex:none}
+.ar:disabled{opacity:.35;cursor:default}
+.ptr{flex:1;min-width:0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.ptr::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;align-items:center;gap:6px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:600}
+.chip.on{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+.chip .x{opacity:.55;font-size:12px;padding:0 2px}
+.chip .x:hover{opacity:1;color:var(--bad)}
+.chip.on .x:hover{color:var(--accink)}
+.hint{color:var(--mute);font-size:14px;padding:8px 4px}
+.tc{position:fixed;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:6px;z-index:20;pointer-events:none;font-family:system-ui,sans-serif}
+.tt{background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;max-width:90%}
+.tt.warn{background:var(--bad);color:#fff}
+.tt.success{background:var(--acc);color:var(--accink)}
+.hc::placeholder{color:var(--mute);opacity:.8}
+.avg{font:700 17px Georgia,serif;min-width:44px}
+.bar{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+.bar button{background:none;color:var(--acc);border:1px solid var(--acc)}
+.empty{color:var(--mute);padding:14px 0}
+.badge{display:inline-block;font:600 11px system-ui,sans-serif;background:var(--mute);color:#fff;border-radius:4px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+
+/* Auth screen */
+#authScreen{display:none;position:fixed;inset:0;background:var(--bg);z-index:50;align-items:center;justify-content:center;font-family:system-ui,sans-serif}
+#authScreen.on{display:flex}
+.authCard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px 32px;width:100%;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.authCard h1{font:700 24px Georgia,serif;margin:0 0 18px;text-align:center}
+.authCard input{width:100%;margin-bottom:14px;padding:11px 12px}
+.authCard .row{display:flex;gap:8px;margin-top:6px}
+.authCard .row button{flex:1}
+.authCard .err{color:var(--bad);font-size:13px;margin:0 0 12px;min-height:18px}
+#app{display:none}
+#app.on{display:block}
+.teacher-only{display:none}
+.teacher-only.on{display:grid}
+</style>
+</head>
+<body>
+
+<!-- Экран входа -->
+<div id="authScreen" class="on">
+  <div class="authCard">
+    <h1>Вход в журнал</h1>
+    <div class="err" id="authErr"></div>
+    <input id="loginInp" type="text" placeholder="логин" autocomplete="username" required>
+    <input id="password" type="password" placeholder="пароль" autocomplete="current-password" required>
+    <div class="row">
+      <button id="btnLogin" type="button" style="width:100%">Войти</button>
+    </div>
+  </div>
+</div>
+
+<!-- Основное приложение -->
+<div id="app">
+<header>
+  <div class="left">
+    <h1>Журнал</h1>
+    <div id="sync" hidden></div>
+  </div>
+  <div id="userbar">
+    <span id="userLabel"></span>
+    <button id="btnLogout" class="ghost" style="border:1px solid var(--line);color:var(--ink)">Выйти</button>
+  </div>
+</header>
+<main>
+<div class="top teacher-only" id="teacherTop">
+<section class="card"><h2>Группы</h2><div id="gl"></div></section>
+<section class="card"><h2>Создать группу</h2>
+<form id="gf"><input id="gn" placeholder="Название группы" required maxlength="40"><button>Создать</button></form>
+</section>
+</div>
+<section class="card" id="sp"></section>
+<section class="card" id="pb" style="grid-column:1/-1" hidden></section>
+</main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAlGvlw83QkaRnnzqp_66IuT9DBH6YG8Cs",
+  authDomain: "zhurnal-6a0f8.firebaseapp.com",
+  databaseURL: "https://zhurnal-6a0f8-default-rtdb.firebaseio.com",
+  projectId: "zhurnal-6a0f8",
+  storageBucket: "zhurnal-6a0f8.firebasestorage.app",
+  messagingSenderId: "346295786572",
+  appId: "1:346295786572:web:6801f0e9ff81ff8644a8e9"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const journalRef = db.ref('journal');
+
+let D = {groups:[], cur:null};
+
+function arr(x) {
+  if (!x) return [];
+  if (Array.isArray(x)) return x;
+  const r = [];
+  Object.keys(x).forEach(k => r[+k] = x[k]);
+  return r;
+}
+function normalize(d) {
+  d.groups = arr(d.groups).filter(Boolean);
+  d.groups.forEach(g => {
+    g.students = arr(g.students).filter(Boolean);
+    g.cols = Array.from(arr(g.cols), c => c || '');
+    g.periods = arr(g.periods).filter(Boolean);
+    g.students.forEach(s => { s.marks = Array.from(arr(s.marks), m => m || ''); });
+    g.periods.forEach(p => {
+      p.colTitles = Array.from(arr(p.colTitles), c => c || '');
+      const st = p.statuses || {};
+      Object.keys(st).forEach(k => st[k] = Array.from(arr(st[k]), m => m || ''));
+      p.statuses = st;
+    });
+  });
+  return d;
+}
+function migrate() {
+  D.groups.forEach(g => g.students.forEach(s => {
+    if (!s.fio) s.fio = ((s.last || '') + ' ' + (s.first || '')).trim();
+  }));
+  D.groups.forEach(g => {
+    g.periods = g.periods || [];
+    if (g.saved) {
+      g.saved.forEach(v => {
+        const st = {};
+        g.students.forEach(s => {
+          const r = v.rows.find(r => r.fio === s.fio);
+          if (r) st[s.id] = r.marks;
+        });
+        g.periods.push({id: v.id, title: v.period, statuses: st, colTitles: v.cols});
+      });
+      delete g.saved;
+    }
+    if (!g.cols) g.cols = ['1','2','3','4','5','6','7','8'];
+    if (!g.login) g.login = mkLogin(g.name);
+    if (!g.pass) g.pass = mkPass();
+    if (!g.v2) {
+      g.cols = g.cols.map((c,i) => c === String(i+1) ? '' : c);
+      g.v2 = true;
+    }
+    g.students.forEach(s => {
+      if (s.marks.length && typeof s.marks[0] === 'number') s.marks = s.marks.map(String);
+      while (g.cols.length < s.marks.length) g.cols.push('');
+    });
+  });
+}
+normalize(D); migrate();
+
+let pend = null;
+let role = null;          // 'teacher' | 'student' | null
+let currentUser = null;   // Firebase user (teacher)
+let studentGroupId = null;
+
+function isTeacher() { return role === 'teacher'; }
+function isStudent() { return role === 'student'; }
+
+function setSync(t, c) {
+  const e = document.getElementById('sync');
+  if (e) { e.textContent = t; e.className = c || ''; }
+}
+
+function save() {
+  if (!isTeacher()) return;
+  clearTimeout(pend);
+  pend = setTimeout(push, 400);
+  setSync('Сохранение…');
+}
+
+async function push() {
+  pend = null;
+  if (!isTeacher()) return;
+  try {
+    await journalRef.set({ groups: D.groups, t: Date.now() });
+    setSync('Сохранено в Firebase', 'ok');
+  } catch(e) {
+    console.error(e);
+    setSync('Ошибка записи — проверьте Rules', 'err');
+    toast('Нет доступа на запись в Firebase', 'warn');
+  }
+}
+
+function tr(s) {
+  const m = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+  return s.toLowerCase().split('').map(c => m[c] !== undefined ? m[c] : c).join('').replace(/[^a-z0-9]+/g,'').slice(0,12);
+}
+function mkLogin(n) { return (tr(n) || 'group') + Math.floor(10 + Math.random()*90); }
+function mkPass() {
+  const a = 'abcdefghjkmnpqrstuvwxyz23456789';
+  const r = new Uint32Array(8);
+  crypto.getRandomValues(r);
+  return [...r].map(x => a[x % a.length]).join('');
+}
+
+function ask(msg, o) {
+  o = o || {};
+  return new Promise(res => {
+    const d = document.createElement('div');
+    d.className = 'ov';
+    d.innerHTML = `<div class="dl" role="alertdialog" aria-modal="true" aria-labelledby="dt"><h3 id="dt">Вы действительно этого хотите?</h3><p>${esc(msg)}</p><div class="bt"><button class="no">Отмена</button>${o.extra ? `<button class="ex">${esc(o.extra)}</button>` : ''}<button class="yes">${esc(o.yes || 'Да')}</button></div></div>`;
+    const kd = e => { if (e.key === 'Escape') { e.preventDefault(); done(false); } };
+    const done = v => { document.removeEventListener('keydown', kd, true); d.remove(); res(v); };
+    document.addEventListener('keydown', kd, true);
+    d.querySelector('.no').onclick = () => done(false);
+    d.querySelector('.yes').onclick = () => done(true);
+    const ex = d.querySelector('.ex');
+    if (ex) ex.onclick = () => done('x');
+    d.addEventListener('click', e => { if (e.target === d) done(false); });
+    document.body.appendChild(d);
+    d.querySelector('.no').focus();
+  });
+}
+
+function cmpS(a, b) { return (!!a.left - !!b.left) || a.fio.localeCompare(b.fio, 'ru'); }
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cur = () => D.groups.find(g => g.id === D.cur);
+
+function vc(v) { return {'5':'v5','4':'v4','3':'v3','2':'v2','н':'vn','Н':'vn'}[v] || ''; }
+
+function gsel(s, j) {
+  const v = s.marks[j] || '', L = ['5','4','3','2','н'], o = (!v || L.includes(v)) ? L : [...L, v];
+  return `<select class="c ${vc(v)}" data-s="${s.id}" data-j="${j}" aria-label="Оценка"${s.left ? ' disabled' : ''}><option value=""></option>${o.map(x => `<option value="${esc(x)}"${x === v ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+}
+
+function markCell(v) {
+  if (!v) return '';
+  return `<span class="mark ${vc(v)}">${esc(v)}</span>`;
+}
+
+function toast(m, type) {
+  let c = document.querySelector('.tc');
+  if (!c) { c = document.createElement('div'); c.className = 'tc'; document.body.appendChild(c); }
+  const t = document.createElement('div');
+  t.className = 'tt ' + (type || '');
+  t.textContent = m;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+function snap(g) {
+  const t = (g.period || '').trim();
+  if (!t || !g.students.length) return null;
+  g.periods = g.periods || [];
+  const st = {};
+  g.students.forEach(s => st[s.id] = g.cols.map((c,j) => s.marks[j] || ''));
+  const ex = g.periods.find(p => p.title === t);
+  if (ex) { ex.statuses = st; ex.colTitles = [...g.cols]; return ex.id; }
+  const p = {id: uid(), title: t, statuses: st, colTitles: [...g.cols]};
+  g.periods.push(p);
+  return p.id;
+}
+
+function slider(g, readonly) {
+  const a = g.periods || [];
+  return `<div class="sw"><h2>Сохранённые периоды</h2><div class="sr"><button class="ar" id="aL" data-sa="p" aria-label="Назад">◀</button><div class="ptr">${a.length ? a.map(p => `<button class="chip${p.id === g.active ? ' on' : ''}" data-pl="${p.id}"><span data-pl="${p.id}">${esc(p.title)}</span>${readonly ? '' : `<span class="x" data-pd="${p.id}" title="Удалить период">✕</span>`}</button>`).join('') : '<span class="hint">Сохранённые периоды появятся здесь</span>'}</div><button class="ar" id="aR" data-sa="n" aria-label="Вперёд">▶</button></div></div>`;
+}
+
+function updArrows() {
+  const tr = document.querySelector('.ptr'), l = document.getElementById('aL'), r = document.getElementById('aR');
+  if (!tr || !l || !r) return;
+  l.disabled = tr.scrollLeft <= 2;
+  r.disabled = tr.scrollLeft + tr.clientWidth >= tr.scrollWidth - 2;
+}
+
+/* ========== Render ========== */
+function render() {
+  if (!role) return;
+
+  const teacherTop = document.getElementById('teacherTop');
+  const userLabel = document.getElementById('userLabel');
+
+  if (isTeacher()) {
+    teacherTop.classList.add('on');
+    userLabel.innerHTML = 'Преподаватель: <b>' + esc(currentUser.email || currentUser.uid) + '</b>';
+  } else {
+    teacherTop.classList.remove('on');
+    const g = D.groups.find(x => x.id === studentGroupId);
+    userLabel.innerHTML = '<b>' + esc(g ? g.name : '—') + '</b>';
+  }
+
+  // Groups list (teacher only)
+  if (isTeacher()) {
+    const gl = document.getElementById('gl');
+    gl.innerHTML = D.groups.length
+      ? `<div class="gsel"><select id="gsel" aria-label="Выбор группы">${D.groups.map(g => `<option value="${g.id}"${g.id === D.cur ? ' selected' : ''}>${esc(g.name) || 'Без названия'} (${g.students.length})</option>`).join('')}</select><button class="ghost" data-dg="${D.cur}" aria-label="Удалить группу" title="Удалить группу">✕</button></div>`
+      : '<div class="empty">Создайте первую группу.</div>';
+  }
+
+  const g = isStudent()
+    ? D.groups.find(x => x.id === studentGroupId)
+    : cur();
+
+  const sp = document.getElementById('sp'), pb = document.getElementById('pb');
+  pb.hidden = !g;
+
+  if (!g) {
+    sp.innerHTML = isTeacher()
+      ? '<h2>Ученики</h2><div class="empty">Выберите или создайте группу.</div>'
+      : '<h2>Журнал</h2><div class="empty">Группа не найдена.</div>';
+    return;
+  }
+
+  const st = [...g.students].sort(cmpS);
+  const readonly = isStudent();
+
+  if (readonly) {
+    // Student: read-only view
+    sp.innerHTML = `<h2>${esc(g.name)}</h2>` +
+      (st.length
+        ? `<div class="tw"><table><thead>
+            <tr><th></th><th class="fio"></th><th colspan="${g.cols.length}">
+              <div class="pr"><span class="per">${esc(g.period || 'Текущий период') || '—'}</span></div>
+            </th></tr>
+            <tr><th>№</th><th class="fio">ФИО</th>
+              ${g.cols.map(c => `<th style="font-size:12px;min-width:46px">${esc(c) || '—'}</th>`).join('')}
+            </tr></thead><tbody>` +
+          st.map((s,i) => `<tr class="${s.left ? 'lf' : ''}"><td class="n">${i+1}</td>
+            <td class="fio">${esc(s.fio)}${s.left ? '<span class="lt">выбыл</span>' : ''}</td>
+            ${g.cols.map((c,j) => `<td>${markCell(s.marks[j])}</td>`).join('')}
+          </tr>`).join('') +
+          '</tbody></table></div>'
+        : '<div class="empty">В группе пока нет учеников.</div>');
+    pb.innerHTML = slider(g, true);
+  } else {
+    // Teacher: full editor
+    sp.innerHTML = `<div class="gh"><label>Группа<input data-gn="1" value="${esc(g.name)}" placeholder="Название группы" maxlength="40"></label><label>Логин<input data-gl="1" value="${esc(g.login)}" autocomplete="off" maxlength="40"></label><label>Пароль<input data-gp="1" value="${esc(g.pass)}" autocomplete="off" maxlength="40"></label></div>
+    <form id="sf"><input id="sl" placeholder="Фамилия Имя Отчество" required maxlength="100"><button>Добавить</button></form>` +
+    (st.length
+      ? `<div class="tw"><table><thead><tr><th></th><th class="fio"></th><th colspan="${g.cols.length}"><div class="pr"><input class="per" data-per="1" value="${esc(g.period || '')}" placeholder="Период" aria-label="Период"><button data-sv="1">Сохранить</button></div></th><th colspan="2"></th></tr><tr><th>№</th><th class="fio">ФИО</th>${g.cols.map((c,i) => `<th><input class="hc" data-hc="${i}" value="${esc(c)}" placeholder="Дата" aria-label="Название столбца"><br><button class="ghost" data-dc="${i}" aria-label="Удалить столбец">✕</button></th>`).join('')}<th><button data-ac="1" aria-label="Добавить столбец" title="Добавить столбец">+</button></th><th></th></tr></thead><tbody>` +
+        st.map((s,i) => `<tr class="${s.left ? 'lf' : ''}"><td class="n">${i+1}</td><td class="fio"><span class="fe" contenteditable="plaintext-only" spellcheck="false" data-fe="${s.id}">${esc(s.fio)}</span>${s.left ? '<span class="lt">выбыл</span>' : ''}</td>${g.cols.map((c,j) => `<td>${gsel(s,j)}</td>`).join('')}<td></td><td><button class="ghost" data-ds="${s.id}" aria-label="Удалить ученика">✕</button></td></tr>`).join('') + '</tbody></table></div>'
+      : '<div class="empty">В группе пока нет учеников.</div>');
+    pb.innerHTML = slider(g, false);
+  }
+  updArrows();
+}
+
+/* ========== Auth UI ========== */
+const authScreen = document.getElementById('authScreen');
+const appEl = document.getElementById('app');
+const authErr = document.getElementById('authErr');
+const loginInp = document.getElementById('loginInp');
+const passInp = document.getElementById('password');
+
+function showAuth() {
+  authScreen.classList.add('on');
+  appEl.classList.remove('on');
+  document.getElementById('userbar').classList.remove('on');
+  role = null;
+  currentUser = null;
+  studentGroupId = null;
+  sessionStorage.removeItem('zhurnal_student');
+  setTimeout(() => loginInp.focus(), 50);
+}
+
+function showTeacher(user) {
+  role = 'teacher';
+  currentUser = user;
+  studentGroupId = null;
+  sessionStorage.removeItem('zhurnal_student');
+  authScreen.classList.remove('on');
+  appEl.classList.add('on');
+  document.getElementById('userbar').classList.add('on');
+  if (!cur()) D.cur = D.groups[0]?.id || null;
+  render();
+  pull(true);
+}
+
+function showStudent(groupId) {
+  role = 'student';
+  currentUser = null;
+  studentGroupId = groupId;
+  sessionStorage.setItem('zhurnal_student', groupId);
+  authScreen.classList.remove('on');
+  appEl.classList.add('on');
+  document.getElementById('userbar').classList.add('on');
+  render();
+  pull(true);
+}
+
+function setAuthError(msg) {
+  authErr.textContent = msg || '';
+}
+
+function setAuthLoading(on) {
+  document.getElementById('btnLogin').disabled = on;
+}
+
+document.getElementById('btnLogin').onclick = async () => {
+  const login = loginInp.value.trim();
+  const password = passInp.value;
+  if (!login || !password) { setAuthError('Введите логин и пароль'); return; }
+  setAuthError('');
+  setAuthLoading(true);
+
+  // 1) Try teacher (Firebase Auth) — login is email
+  try {
+    await auth.signInWithEmailAndPassword(login, password);
+    // onAuthStateChanged will call showTeacher
+    setAuthLoading(false);
+    return;
+  } catch (e) {
+    // not a teacher account — try student
+  }
+
+  // 2) Try student: match against group login/pass
+  try {
+    const snap = await journalRef.once('value');
+    const raw = snap.val();
+    if (!raw || !raw.groups) {
+      setAuthError('Неверный логин или пароль');
+      setAuthLoading(false);
+      return;
+    }
+    const groups = arr(raw.groups).filter(Boolean);
+    const g = groups.find(x => x.login === login && x.pass === password);
+    if (!g) {
+      setAuthError('Неверный логин или пароль');
+      setAuthLoading(false);
+      return;
+    }
+    // Load data into D
+    D.groups = groups;
+    normalize(D);
+    migrate();
+    showStudent(g.id);
+  } catch (e) {
+    console.error(e);
+    setAuthError('Нет связи с сервером');
+  } finally {
+    setAuthLoading(false);
+  }
+};
+
+document.getElementById('btnLogout').onclick = async () => {
+  if (isTeacher()) {
+    await auth.signOut();
+  } else {
+    showAuth();
+  }
+};
+
+[loginInp, passInp].forEach(el => {
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btnLogin').click();
+  });
+});
+
+/* ========== Auth state ========== */
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    showTeacher(user);
+    return;
+  }
+  // No Firebase user — try restore student session, otherwise show login
+  if (role === 'student') return;
+  const sid = sessionStorage.getItem('zhurnal_student');
+  if (sid) {
+    try {
+      const snap = await journalRef.once('value');
+      const raw = snap.val();
+      if (raw && raw.groups) {
+        const groups = arr(raw.groups).filter(Boolean);
+        if (groups.find(g => g.id === sid)) {
+          D.groups = groups;
+          normalize(D);
+          migrate();
+          showStudent(sid);
+          return;
+        }
+      }
+      sessionStorage.removeItem('zhurnal_student');
+    } catch (e) {
+      sessionStorage.removeItem('zhurnal_student');
+    }
+  }
+  showAuth();
+});
+
+/* ========== Event handlers (journal) — teacher only for edits ========== */
+document.getElementById('gf').onsubmit = e => {
+  e.preventDefault();
+  if (!isTeacher()) return;
+  const i = document.getElementById('gn'), n = i.value.trim();
+  if (!n) return;
+  const g = {id: uid(), name: n, login: mkLogin(n), pass: mkPass(), cols: Array(8).fill(''), v2: true, students: []};
+  D.groups.push(g);
+  D.cur = g.id;
+  i.value = '';
+  save();
+  render();
+};
+
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'sf' || !isTeacher()) return;
+  e.preventDefault();
+  const f = document.getElementById('sl').value.trim().replace(/\s+/g, ' ');
+  if (!f) return;
+  cur().students.push({id: uid(), fio: f, marks: []});
+  save();
+  render();
+  document.getElementById('sl').focus();
+});
+
+document.addEventListener('click', async e => {
+  if (!role) return;
+  const t = e.target;
+  const g = isStudent()
+    ? D.groups.find(x => x.id === studentGroupId)
+    : cur();
+  if (!g && !t.dataset.dg) return;
+
+  // Both roles: period chips navigation & arrows
+  if (t.dataset.sa) {
+    const tr = document.querySelector('.ptr');
+    if (tr) tr.scrollBy({left: (t.dataset.sa === 'n' ? 1 : -1) * 160, behavior: 'smooth'});
+    setTimeout(updArrows, 300);
+    return;
+  }
+
+  // Delete period (teacher) — must be before chip open, because ✕ is inside the chip
+  if (t.dataset.pd) {
+    if (!isTeacher()) return;
+    e.stopPropagation();
+    const p = (g.periods || []).find(x => x.id === t.dataset.pd);
+    if (!p) return;
+    const open = g.active === p.id || (g.period || '').trim() === p.title;
+    if (await ask('Удалить период «' + p.title + '»?' + (open ? ' Он открыт в таблице, таблица тоже очистится.' : ''))) {
+      g.periods = g.periods.filter(x => x.id !== p.id);
+      if (open) {
+        g.period = '';
+        g.cols = g.cols.map(() => '');
+        g.students.forEach(x => x.marks = []);
+        g.active = null;
+      }
+      save();
+      render();
+      toast('Период удалён', 'info');
+    }
+    return;
+  }
+
+  // Open saved period (both roles, student read-only)
+  const chip = t.closest('[data-pl]');
+  if (chip) {
+    const p = (g.periods || []).find(x => x.id === chip.dataset.pl);
+    if (!p || g.active === p.id) return;
+    if (isTeacher()) {
+      const curPer = (g.period || '').trim();
+      if (curPer && curPer !== p.title) snap(g);
+    }
+    g.period = p.title;
+    g.cols = [...p.colTitles];
+    g.students.forEach(x => {
+      const m = p.statuses[x.id] || [];
+      x.marks = g.cols.map((c,j) => m[j] || '');
+    });
+    g.active = p.id;
+    if (isTeacher()) save();
+    render();
+    toast('Открыт период «' + p.title + '»', 'info');
+    return;
+  }
+
+  // Teacher-only actions below
+  if (!isTeacher()) return;
+
+  if (t.dataset.dg) {
+    e.stopPropagation();
+    if (await ask('Удалить группу «' + (D.groups.find(x => x.id === t.dataset.dg) || {}).name + '» со всеми учениками и оценками?')) {
+      D.groups = D.groups.filter(x => x.id !== t.dataset.dg);
+      if (D.cur === t.dataset.dg) D.cur = D.groups[0]?.id || null;
+      save();
+      render();
+    }
+    return;
+  }
+  if (t.dataset.sv) {
+    const per = (g.period || '').trim();
+    if (!per) { toast('Введите название периода (например: Октябрь 2026)', 'warn'); document.querySelector('.per').focus(); return; }
+    if (!g.students.length) { toast('Нет учеников для сохранения', 'warn'); return; }
+    snap(g);
+    g.period = '';
+    g.cols = g.cols.map(() => '');
+    g.students.forEach(x => x.marks = []);
+    g.active = null;
+    save();
+    render();
+    toast('Период «' + per + '» сохранён', 'success');
+    return;
+  }
+  if (t.dataset.ac) { g.cols.push(''); save(); render(); return; }
+  if (t.dataset.dc !== undefined) {
+    const k = +t.dataset.dc;
+    if (g.cols.length <= 1) return;
+    if (!await ask('Удалить столбец «' + (g.cols[k] || 'без даты') + '» вместе с оценками?')) return;
+    g.cols.splice(k, 1);
+    g.students.forEach(x => { if (x.marks.length > k) x.marks.splice(k, 1); });
+    save();
+    render();
+    return;
+  }
+  if (t.dataset.ds) {
+    const st = g.students.find(x => x.id === t.dataset.ds);
+    if (!st) return;
+    const r = await ask(
+      st.left
+        ? 'Ученик «' + st.fio + '» отмечен как выбывший. Удалить его совсем или вернуть в список?'
+        : 'Ученик «' + st.fio + '»: удалить совсем или отметить как выбывшего? Выбывший переместится в конец списка.',
+      {yes: 'Удалить', extra: st.left ? 'Вернуть' : 'Выбыл'}
+    );
+    if (r === true) g.students = g.students.filter(x => x.id !== st.id);
+    else if (r === 'x') st.left = !st.left;
+    else return;
+    save();
+    render();
+    return;
+  }
+});
+
+document.addEventListener('input', e => {
+  if (!isTeacher()) return;
+  const t = e.target, g = cur();
+  if (!g) return;
+  if (t.dataset.per) { g.period = t.value; save(); return; }
+  if (t.dataset.hc !== undefined) { g.cols[+t.dataset.hc] = t.value; save(); return; }
+  if (t.dataset.j !== undefined) {
+    const s = g.students.find(x => x.id === t.dataset.s);
+    s.marks[+t.dataset.j] = t.value.trim();
+    t.className = 'c ' + vc(t.value);
+    save();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.dataset && e.target.dataset.fe && e.key === 'Enter') {
+    e.preventDefault();
+    e.target.blur();
+  }
+});
+
+document.addEventListener('focusout', async e => {
+  if (!isTeacher()) return;
+  const t = e.target, g = cur();
+  if (!g || !t.dataset || !t.dataset.fe) return;
+  const s = g.students.find(x => x.id === t.dataset.fe);
+  if (!s) return;
+  const v = t.textContent.trim().replace(/\s+/g, ' ');
+  if (!v || v === s.fio) { t.textContent = s.fio; return; }
+  if (!await ask('Изменить ФИО «' + s.fio + '» на «' + v + '»?')) { t.textContent = s.fio; return; }
+  const ord = () => [...g.students].sort(cmpS).map(x => x.id).join();
+  const before = ord();
+  s.fio = v;
+  save();
+  if (ord() !== before) render();
+  else t.textContent = v;
+});
+
+document.addEventListener('change', async e => {
+  if (!isTeacher()) return;
+  const t = e.target, g = cur();
+  if (!g || !t.dataset) return;
+  const K = {gn: ['name', 'название группы'], gl: ['login', 'логин'], gp: ['pass', 'пароль']};
+  const k = Object.keys(K).find(x => t.dataset[x]);
+  if (!k) return;
+  const f = K[k][0], old = g[f], v = t.value.trim();
+  if (v === old) return;
+  if (!v) { t.value = old; return; }
+  if (await ask('Изменить ' + K[k][1] + ' «' + old + '» на «' + v + '»?')) {
+    g[f] = v;
+    save();
+    render();
+  } else t.value = old;
+});
+
+document.addEventListener('scroll', e => {
+  if (e.target.classList && e.target.classList.contains('ptr')) updArrows();
+}, true);
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'gsel' && isTeacher()) {
+    D.cur = e.target.value;
+    save();
+    render();
+  }
+});
+
+/* ========== Sync ========== */
+const ss = o => JSON.stringify(o, (k, v) => v && typeof v === 'object' && !Array.isArray(v)
+  ? Object.keys(v).sort().reduce((r, x) => (r[x] = v[x], r), {})
+  : v);
+
+const busy = () => !!document.querySelector('.ov') || !!(document.activeElement && document.activeElement.matches && document.activeElement.matches('input,select,[contenteditable]'));
+
+async function pull(first) {
+  if (!role || pend) return;
+  try {
+    const snap = await journalRef.once('value');
+    const raw = snap.val();
+    if (pend || (!first && busy() && isTeacher())) return;
+    if (raw === null) {
+      if (isTeacher() && D.groups.length) await push();
+      else setSync('Подключено к Firebase', 'ok');
+      return;
+    }
+    const nd = normalize(JSON.parse(JSON.stringify({groups: raw.groups})));
+    const lc = normalize(JSON.parse(JSON.stringify({groups: D.groups})));
+    if (ss(nd.groups) !== ss(lc.groups)) {
+      D.groups = nd.groups;
+      migrate();
+      if (isTeacher() && !D.groups.some(g => g.id === D.cur)) {
+        D.cur = D.groups[0] ? D.groups[0].id : null;
+      }
+      if (isStudent() && !D.groups.some(g => g.id === studentGroupId)) {
+        toast('Группа больше недоступна', 'warn');
+        showAuth();
+        return;
+      }
+      render();
+    }
+    setSync('Подключено к Firebase', 'ok');
+  } catch(e) {
+    console.error(e);
+    setSync('Нет связи с Firebase', 'err');
+  }
+}
+
+setInterval(() => { if (role) pull(); }, 4000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && role) pull();
+});
+</script>
+</body>
+</html>
