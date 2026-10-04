@@ -2,26 +2,26 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1000, viewport-fit=cover">
+<meta name="viewport" content="width=800, viewport-fit=cover">
 <title>Журнал</title>
 <style>
 :root{color-scheme:light;--bg:#eef1f5;--panel:#ffffff;--ink:#1f2937;--mute:#6b7280;--line:#d3d9e2;--acc:#2563eb;--accink:#ffffff;--bad:#dc2626;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{min-width:1000px;margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif}
+body{min-width:800px;margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif}
 h1{font-size:30px;margin:0;letter-spacing:-.5px}
 #sync{font:12px system-ui,sans-serif;color:var(--mute);margin-top:2px}
 #sync.ok{color:#16a34a}
 #sync.err{color:var(--bad)}
-header{padding:20px 20px 8px;width:1000px;margin:0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+header{padding:20px 20px 8px;width:800px;margin:0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 header .left{flex:1}
 header p{margin:2px 0 0;color:var(--mute);font-family:system-ui,sans-serif;font-size:14px}
 #userbar{display:none;font:13px system-ui,sans-serif;color:var(--mute);align-items:center;gap:10px;white-space:nowrap}
 #userbar.on{display:flex}
 #userbar b{color:var(--ink);font-weight:600}
 #btnLogout{padding:6px 12px;font-size:13px}
-main{width:1000px;margin:0 auto;padding:12px 20px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;font-family:system-ui,sans-serif}
+main{width:800px;margin:0 auto;padding:12px 20px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;font-family:system-ui,sans-serif}
 .top{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .top>*{min-width:0}
 #gf{margin-bottom:0}
@@ -38,13 +38,16 @@ button:disabled{opacity:.5;cursor:default}
 .g{display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent}
 .g.on{background:var(--bg);border-color:var(--acc);font-weight:600}
 .g small{color:var(--mute);font-weight:400}
-.tw{overflow-x:auto;border-top:1px solid var(--line)}
-table{border-collapse:collapse;width:100%}
-th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center;vertical-align:middle}
+.tw{overflow-x:auto;border-top:1px solid var(--line);scrollbar-width:none;-ms-overflow-style:none}
+.tw::-webkit-scrollbar{display:none}
+table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center;vertical-align:middle;background:var(--panel)}
 th{font-weight:600;font-size:13px;color:var(--mute)}
-td.n{color:var(--mute);font-size:13px;width:28px}
-td.fio,th.fio{text-align:left;font-weight:600;min-width:170px;overflow-wrap:anywhere;position:sticky;left:0;background:var(--panel)}
+th.n,td.n{position:sticky;left:0;z-index:3;color:var(--mute);font-size:13px;width:36px;min-width:36px;max-width:36px;background:var(--panel)}
+td.fio,th.fio{text-align:left;font-weight:600;min-width:170px;overflow-wrap:anywhere;position:sticky;left:36px;z-index:3;background:var(--panel);box-shadow:6px 0 8px -6px rgba(15,23,42,.18)}
 th.fio{font-weight:600}
+th.percell{position:sticky;left:0;z-index:5;background:var(--panel);min-width:206px;text-align:left;box-shadow:6px 0 8px -6px rgba(15,23,42,.18)}
+thead th.n,thead th.fio{z-index:4}
 .c{width:46px;padding:6px 2px;text-align:center;border-radius:4px}
 select.c{appearance:none;-webkit-appearance:none;text-align:center;text-align-last:center;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
 select.c option{background:#fff;color:#1f2937}
@@ -78,13 +81,13 @@ select.vn{background:#2563eb;color:#fff;border-color:#2563eb}
 .dl p{margin:0 0 16px;color:var(--mute);overflow-wrap:anywhere}
 .dl .ex{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
 .lt{font-size:11px;font-weight:400;color:#fff;background:var(--mute);border-radius:4px;padding:1px 6px;margin-left:4px;white-space:nowrap}
-.lf td,.lf td.fio{background:#e5e7eb}
+.lf td,.lf td.fio,.lf td.n{background:#e5e7eb}
 .lf .fe{color:var(--mute)}
 .lf select.c{background:#d9dde3;color:var(--mute);border-color:#cbd1d9;cursor:not-allowed;opacity:1}
 .dl .bt{flex-wrap:wrap;display:flex;gap:8px;justify-content:flex-end}
 .dl .no{background:none;color:var(--ink);border:1px solid var(--line)}
-.pr{display:flex;gap:6px;justify-content:center;align-items:center}
-.per{flex:1;min-width:0;max-width:260px;text-align:center;font-weight:600}
+.pr{display:flex;gap:6px;justify-content:flex-start;align-items:center}
+.per{flex:1;min-width:0;max-width:160px;text-align:center;font-weight:600}
 .sw h2{margin-bottom:8px}
 .sr{display:flex;align-items:center;gap:8px}
 .ar{background:none;color:var(--ink);border:1px solid var(--line);padding:8px 10px;font-size:13px;flex:none}
@@ -400,10 +403,9 @@ function render() {
     sp.innerHTML = `<h2>${esc(g.name)}</h2>` +
       (st.length
         ? `<div class="tw"><table><thead>
-            <tr><th></th><th class="fio"></th><th colspan="${g.cols.length}">
-              <div class="pr"><span class="per">${esc(g.period || 'Текущий период') || '—'}</span></div>
-            </th></tr>
-            <tr><th>№</th><th class="fio">ФИО</th>
+            <tr><th class="percell" colspan="2"><div class="pr"><span class="per">${esc(g.period || 'Текущий период') || '—'}</span></div></th>
+              <th colspan="${g.cols.length}"></th></tr>
+            <tr><th class="n">№</th><th class="fio">ФИО</th>
               ${g.cols.map(c => `<th style="font-size:12px;min-width:46px">${esc(c) || '—'}</th>`).join('')}
             </tr></thead><tbody>` +
           st.map((s,i) => `<tr class="${s.left ? 'lf' : ''}"><td class="n">${i+1}</td>
@@ -418,7 +420,7 @@ function render() {
     sp.innerHTML = `<div class="gh"><label>Группа<input data-gn="1" value="${esc(g.name)}" placeholder="Название группы" maxlength="40"></label><label>Логин<input data-gl="1" value="${esc(g.login)}" autocomplete="off" maxlength="40"></label><label>Пароль<input data-gp="1" value="${esc(g.pass)}" autocomplete="off" maxlength="40"></label></div>
     <form id="sf"><input id="sl" placeholder="Фамилия Имя Отчество" required maxlength="100"><button>Добавить</button></form>` +
     (st.length
-      ? `<div class="tw"><table><thead><tr><th></th><th class="fio"></th><th colspan="${g.cols.length}"><div class="pr"><input class="per" data-per="1" value="${esc(g.period || '')}" placeholder="Период" aria-label="Период"><button data-sv="1">Сохранить</button></div></th><th colspan="2"></th></tr><tr><th>№</th><th class="fio">ФИО</th>${g.cols.map((c,i) => `<th><input class="hc" data-hc="${i}" value="${esc(c)}" placeholder="Дата" aria-label="Название столбца"><br><button class="ghost" data-dc="${i}" aria-label="Удалить столбец">✕</button></th>`).join('')}<th><button data-ac="1" aria-label="Добавить столбец" title="Добавить столбец">+</button></th><th></th></tr></thead><tbody>` +
+      ? `<div class="tw"><table><thead><tr><th class="percell" colspan="2"><div class="pr"><input class="per" data-per="1" value="${esc(g.period || '')}" placeholder="Период" aria-label="Период"><button data-sv="1">Сохранить</button></div></th><th colspan="${g.cols.length}"></th><th colspan="2"></th></tr><tr><th class="n">№</th><th class="fio">ФИО</th>${g.cols.map((c,i) => `<th><input class="hc" data-hc="${i}" value="${esc(c)}" placeholder="Дата" aria-label="Название столбца"><br><button class="ghost" data-dc="${i}" aria-label="Удалить столбец">✕</button></th>`).join('')}<th><button data-ac="1" aria-label="Добавить столбец" title="Добавить столбец">+</button></th><th></th></tr></thead><tbody>` +
         st.map((s,i) => `<tr class="${s.left ? 'lf' : ''}"><td class="n">${i+1}</td><td class="fio"><span class="fe" contenteditable="plaintext-only" spellcheck="false" data-fe="${s.id}">${esc(s.fio)}</span>${s.left ? '<span class="lt">выбыл</span>' : ''}</td>${g.cols.map((c,j) => `<td>${gsel(s,j)}</td>`).join('')}<td></td><td><button class="ghost" data-ds="${s.id}" aria-label="Удалить ученика">✕</button></td></tr>`).join('') + '</tbody></table></div>'
       : '<div class="empty">В группе пока нет учеников.</div>');
     pb.innerHTML = slider(g, false);
