@@ -38,8 +38,11 @@ button:disabled{opacity:.5;cursor:default}
 .g{display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent}
 .g.on{background:var(--bg);border-color:var(--acc);font-weight:600}
 .g small{color:var(--mute);font-weight:400}
-.tw{overflow-x:auto;border-top:1px solid var(--line);scrollbar-width:none;-ms-overflow-style:none}
-.tw::-webkit-scrollbar{display:none}
+.tw{overflow-x:auto;border-top:1px solid var(--line);scrollbar-width:thin;scrollbar-color:#9aa4b2 var(--bg);padding-bottom:2px}
+.tw::-webkit-scrollbar{height:12px}
+.tw::-webkit-scrollbar-track{background:var(--bg);border-radius:6px}
+.tw::-webkit-scrollbar-thumb{background:#9aa4b2;border-radius:6px;border:2px solid var(--bg)}
+.tw::-webkit-scrollbar-thumb:hover{background:#6b7280}
 table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
 th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center;vertical-align:middle;background:var(--panel)}
 th{font-weight:600;font-size:13px;color:var(--mute)}
@@ -75,6 +78,13 @@ select.vn{background:#2563eb;color:#fff;border-color:#2563eb}
 .gh label:first-child input{font:700 18px Georgia,serif}
 .fe{display:block;padding:2px 4px;border-radius:4px;cursor:text;outline-offset:2px}
 .fe:hover{background:var(--bg)}
+.ck{display:flex;align-items:center;gap:8px;padding:7px 2px;cursor:pointer;overflow-wrap:anywhere}
+.ck input{flex:none;width:18px;height:18px;min-width:18px;padding:0;accent-color:var(--acc)}
+.exl{max-height:260px;overflow-y:auto;margin:6px 0 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sp{display:inline-block;min-width:96px;padding:4px 6px;border-radius:4px;font:400 13px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);cursor:text;outline-offset:2px;text-align:center}
+.sp:hover{background:var(--bg)}
+th.pwh{font-size:12px;min-width:110px}
+td.pw{min-width:110px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));z-index:10;font-family:system-ui,sans-serif}
 .dl{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:380px;width:100%}
 .dl h3{margin:0 0 6px;font:700 18px Georgia,serif}
@@ -165,6 +175,7 @@ select.vn{background:#2563eb;color:#fff;border-color:#2563eb}
 </main>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
@@ -210,6 +221,7 @@ function normalize(d) {
   return d;
 }
 function migrate() {
+  let changed = false;
   D.groups.forEach(g => g.students.forEach(s => {
     if (!s.fio) s.fio = ((s.last || '') + ' ' + (s.first || '')).trim();
   }));
@@ -234,10 +246,12 @@ function migrate() {
       g.v2 = true;
     }
     g.students.forEach(s => {
+      if (!s.pass && isTeacher()) { s.pass = mkStuPass(g); changed = true; }
       if (s.marks.length && typeof s.marks[0] === 'number') s.marks = s.marks.map(String);
       while (g.cols.length < s.marks.length) g.cols.push('');
     });
   });
+  return changed;
 }
 normalize(D); migrate();
 
@@ -245,6 +259,7 @@ let pend = null;
 let role = null;          // 'teacher' | 'student' | null
 let currentUser = null;   // Firebase user (teacher)
 let studentGroupId = null;
+let studentSelfId = null;   // id ученика при входе по личному паролю
 
 function isTeacher() { return role === 'teacher'; }
 function isStudent() { return role === 'student'; }
@@ -256,6 +271,7 @@ function setSync(t, c) {
 
 function save() {
   if (!isTeacher()) return;
+  autoSnap();
   clearTimeout(pend);
   pend = setTimeout(push, 400);
   setSync('Сохранение…');
@@ -284,6 +300,12 @@ function mkPass() {
   const r = new Uint32Array(8);
   crypto.getRandomValues(r);
   return [...r].map(x => a[x % a.length]).join('');
+}
+
+function mkStuPass(g) {
+  let p;
+  do { p = mkPass(); } while (p === g.pass || (g.students || []).some(s => s.pass === p));
+  return p;
 }
 
 function ask(msg, o) {
@@ -345,9 +367,28 @@ function snap(g) {
   return p.id;
 }
 
+/* Автосохранение: пока у периода есть название, его снимок обновляется при каждой правке.
+   Открытый/созданный период запоминается в g.active, поэтому смена названия переименовывает его, а не плодит копии. */
+function autoSnap() {
+  const g = cur();
+  if (!g) return;
+  const t = (g.period || '').trim();
+  if (!t || !g.students.length) return;
+  g.periods = g.periods || [];
+  let p = g.active ? g.periods.find(x => x.id === g.active) : null;
+  if (g.active && !p) g.active = null;
+  if (g.periods.some(x => x !== p && x.title === t)) return;   // название занято другим периодом — не затираем его
+  if (!p) { g.active = snap(g); return; }
+  const st = {};
+  g.students.forEach(s => st[s.id] = g.cols.map((c, j) => s.marks[j] || ''));
+  p.title = t;
+  p.statuses = st;
+  p.colTitles = [...g.cols];
+}
+
 function slider(g, readonly) {
   const a = g.periods || [];
-  return `<div class="sw"><h2>Сохранённые периоды</h2><div class="sr"><button class="ar" id="aL" data-sa="p" aria-label="Назад">◀</button><div class="ptr">${a.length ? a.map(p => `<button class="chip${p.id === g.active ? ' on' : ''}" data-pl="${p.id}"><span data-pl="${p.id}">${esc(p.title)}</span>${readonly ? '' : `<span class="x" data-pd="${p.id}" title="Удалить период">✕</span>`}</button>`).join('') : '<span class="hint">Сохранённые периоды появятся здесь</span>'}</div><button class="ar" id="aR" data-sa="n" aria-label="Вперёд">▶</button></div></div>`;
+  return `<div class="sw"><h2>Сохранённые периоды</h2><div class="sr"><button class="ar" id="aL" data-sa="p" aria-label="Назад">◀</button><div class="ptr">${a.length ? a.map(p => `<button class="chip${p.id === g.active ? ' on' : ''}" data-pl="${p.id}"><span data-pl="${p.id}">${esc(p.title)}</span>${readonly ? '' : `<span class="x" data-pd="${p.id}" title="Удалить период">✕</span>`}</button>`).join('') : '<span class="hint">Сохранённые периоды появятся здесь</span>'}</div><button class="ar" id="aR" data-sa="n" aria-label="Вперёд">▶</button></div>${readonly ? '' : `<div class="bar" style="margin:12px 0 0"><button data-ex="1"${a.length ? '' : ' disabled'}>Выгрузить в Word (.docx)</button></div>`}</div>`;
 }
 
 function updArrows() {
@@ -356,6 +397,131 @@ function updArrows() {
   l.disabled = tr.scrollLeft <= 2;
   r.disabled = tr.scrollLeft + tr.clientWidth >= tr.scrollWidth - 2;
 }
+
+
+/* ===== DOCX ===== */
+const xe = s => String(s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DX_MARK = {'5':['16A34A','FFFFFF'],'4':['FACC15','1F2937'],'3':['FB923C','1F2937'],'2':['DC2626','FFFFFF'],'н':['2563EB','FFFFFF'],'Н':['2563EB','FFFFFF']};
+const DX_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+
+function dxCell(w, text, o) {
+  o = o || {};
+  const sh = o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : '';
+  const rpr = `<w:rPr>${o.b ? '<w:b/>' : ''}${o.color ? `<w:color w:val="${o.color}"/>` : ''}<w:sz w:val="${o.sz || 20}"/><w:szCs w:val="${o.sz || 20}"/></w:rPr>`;
+  const run = text ? `<w:r>${rpr}<w:t xml:space="preserve">${xe(text)}</w:t></w:r>` : '';
+  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${sh}<w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="40" w:after="40" w:line="240" w:lineRule="auto"/><w:jc w:val="${o.jc || 'center'}"/></w:pPr>${run}</w:p></w:tc>`;
+}
+
+/* Данные периода. Открытый сейчас период берём из живой таблицы, остальные — из сохранённого снимка. */
+function periodData(g, p, selfId) {
+  const live = g.active === p.id;
+  const titles = live ? g.cols : (p.colTitles || []);
+  let studs = [...g.students].sort(cmpS);
+  if (selfId) studs = studs.filter(s => s.id === selfId);
+  const get = (s, j) => String((live ? s.marks[j] : (p.statuses && p.statuses[s.id] || [])[j]) || '').trim();
+  const idx = [];
+  titles.forEach((t, j) => { if ((t || '').trim() || studs.some(s => get(s, j))) idx.push(j); });
+  return {
+    titles: idx.map(j => (titles[j] || '').trim()),
+    rows: studs.map(s => ({fio: s.fio, left: !!s.left, marks: idx.map(j => get(s, j))}))
+  };
+}
+
+function dxTable(d) {
+  const AV = 15398 - 560, n = d.titles.length;
+  let f = 3600, gw = n ? Math.min(900, Math.floor((AV - f) / n)) : 0;
+  if (n && gw < 460) { f = Math.max(2200, AV - n * 460); gw = Math.max(260, Math.floor((AV - f) / n)); }
+  const total = 560 + f + n * gw;
+  const B = k => `<w:${k} w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>`;
+  let x = `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:tblBorders>${B('top')}${B('left')}${B('bottom')}${B('right')}${B('insideH')}${B('insideV')}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="60" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tblCellMar></w:tblPr>`;
+  x += '<w:tblGrid><w:gridCol w:w="560"/><w:gridCol w:w="' + f + '"/>' + d.titles.map(() => `<w:gridCol w:w="${gw}"/>`).join('') + '</w:tblGrid>';
+  const H = {fill: 'F3F4F6', b: true, sz: 16};
+  x += '<w:tr><w:trPr><w:cantSplit/><w:tblHeader/></w:trPr>' + dxCell(560, '№', H) + dxCell(f, 'ФИО', {...H, jc: 'left'}) + d.titles.map(t => dxCell(gw, t, H)).join('') + '</w:tr>';
+  d.rows.forEach((r, i) => {
+    x += '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + dxCell(560, String(i + 1), {color: '6B7280', sz: 18}) +
+      dxCell(f, r.fio + (r.left ? ' (выбыл)' : ''), {jc: 'left', b: true, color: r.left ? '6B7280' : null}) +
+      r.marks.map(m => { const c = DX_MARK[m]; return dxCell(gw, m, c ? {fill: c[0], color: c[1], b: true} : {}); }).join('') + '</w:tr>';
+  });
+  return x + '</w:tbl>';
+}
+
+async function buildDocx(g, periods, selfId) {
+  const P = (style, text, extra) => `<w:p><w:pPr><w:pStyle w:val="${style}"/>${extra || ''}</w:pPr><w:r><w:t xml:space="preserve">${xe(text)}</w:t></w:r></w:p>`;
+  let body = P('Heading1', g.name || 'Журнал') +
+    `<w:p><w:pPr><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:color w:val="6B7280"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">Выгружено: ${xe(new Date().toLocaleDateString('ru-RU'))}</w:t></w:r></w:p>`;
+  periods.forEach(p => {
+    const d = periodData(g, p, selfId);
+    body += P('Heading2', 'Период: ' + p.title);
+    body += d.rows.length ? dxTable(d) : '<w:p><w:r><w:t>В группе нет учеников.</w:t></w:r></w:p>';
+    body += '<w:p><w:pPr><w:spacing w:before="0" w:after="200"/></w:pPr></w:p>';
+  });
+  const sect = '<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr>';
+  const H = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const z = new JSZip();
+  z.file('[Content_Types].xml', H + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>');
+  z.file('_rels/.rels', H + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="word/document.xml"/></Relationships>`);
+  z.file('word/_rels/document.xml.rels', H + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/styles" Target="styles.xml"/></Relationships>`);
+  z.file('word/styles.xml', H + `<w:styles ${DX_NS}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="ru-RU" w:eastAsia="ru-RU" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="259" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="0" w:after="60"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="26"/><w:szCs w:val="26"/></w:rPr></w:style></w:styles>`);
+  z.file('word/document.xml', H + `<w:document ${DX_NS}><w:body>${body}${sect}</w:body></w:document>`);
+  return z.generateAsync({type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression: 'DEFLATE'});
+}
+
+function saveBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+function openExport() {
+  if (!isTeacher()) return;
+  const g0 = cur();
+  const ps = g0 ? (g0.periods || []) : [];
+  if (!ps.length) { toast('Нет сохранённых периодов', 'warn'); return; }
+  if (typeof JSZip === 'undefined') { toast('Не загрузилась библиотека для .docx — проверьте интернет', 'warn'); return; }
+  const d = document.createElement('div');
+  d.className = 'ov';
+  d.innerHTML = `<div class="dl" role="dialog" aria-modal="true" aria-labelledby="exT" style="max-width:420px"><h3 id="exT">Выгрузка в Word (.docx)</h3><label class="ck"><input type="checkbox" id="exAll" checked><b>Все периоды</b></label><div class="exl">${ps.map(p => `<label class="ck"><input type="checkbox" data-xp="${p.id}" checked><span>${esc(p.title)}</span></label>`).join('')}</div><div class="bt"><button class="no">Отмена</button><button class="yes">Скачать</button></div></div>`;
+  const kd = e => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+  const close = () => { document.removeEventListener('keydown', kd, true); d.remove(); };
+  document.addEventListener('keydown', kd, true);
+  const all = d.querySelector('#exAll'), boxes = [...d.querySelectorAll('[data-xp]')], yes = d.querySelector('.yes');
+  const sync = () => {
+    const n = boxes.filter(b => b.checked).length;
+    all.checked = n === boxes.length;
+    all.indeterminate = n > 0 && n < boxes.length;
+    yes.disabled = !n;
+  };
+  all.onchange = () => { boxes.forEach(b => b.checked = all.checked); sync(); };
+  boxes.forEach(b => b.onchange = sync);
+  d.querySelector('.no').onclick = close;
+  d.addEventListener('click', e => { if (e.target === d) close(); });
+  yes.onclick = async () => {
+    const g = cur();
+    if (!g) { close(); return; }
+    const ids = boxes.filter(b => b.checked).map(b => b.dataset.xp);
+    const sel = (g.periods || []).filter(p => ids.includes(p.id));
+    if (!sel.length) { toast('Выбранные периоды больше недоступны', 'warn'); close(); return; }
+    yes.disabled = true;
+    try {
+      const blob = await buildDocx(g, sel, null);
+      const day = new Date().toISOString().slice(0, 10);
+      saveBlob(blob, ('Журнал_' + (g.name || 'группа') + '_' + day + '.docx').replace(/[\\/:*?"<>|\s]+/g, '_'));
+      close();
+      toast('Файл .docx сформирован', 'success');
+    } catch (e) {
+      console.error(e);
+      toast('Не удалось сформировать .docx', 'warn');
+      yes.disabled = false;
+    }
+  };
+  document.body.appendChild(d);
+  yes.focus();
+}
+/* ===== /DOCX ===== */
 
 /* ========== Render ========== */
 function render() {
@@ -370,7 +536,8 @@ function render() {
   } else {
     teacherTop.classList.remove('on');
     const g = D.groups.find(x => x.id === studentGroupId);
-    userLabel.innerHTML = '<b>' + esc(g ? g.name : '—') + '</b>';
+    const me = g && studentSelfId ? g.students.find(x => x.id === studentSelfId) : null;
+    userLabel.innerHTML = '<b>' + esc(me ? me.fio : (g ? g.name : '—')) + '</b>';
   }
 
   // Groups list (teacher only)
@@ -395,12 +562,13 @@ function render() {
     return;
   }
 
-  const st = [...g.students].sort(cmpS);
+  const meSt = isStudent() && studentSelfId ? g.students.find(x => x.id === studentSelfId) : null;
+  const st = (isStudent() && studentSelfId ? g.students.filter(x => x.id === studentSelfId) : [...g.students]).sort(cmpS);
   const readonly = isStudent();
 
   if (readonly) {
     // Student: read-only view
-    sp.innerHTML = `<h2>${esc(g.name)}</h2>` +
+    sp.innerHTML = `<h2>${meSt ? esc(meSt.fio) + '<span class="badge">' + esc(g.name) + '</span>' : esc(g.name)}</h2>` +
       (st.length
         ? `<div class="tw"><table><thead>
             <tr><th class="percell" colspan="2"><div class="pr"><span class="per">${esc(g.period || 'Текущий период') || '—'}</span></div></th>
@@ -420,8 +588,8 @@ function render() {
     sp.innerHTML = `<div class="gh"><label>Группа<input data-gn="1" value="${esc(g.name)}" placeholder="Название группы" maxlength="40"></label><label>Логин<input data-gl="1" value="${esc(g.login)}" autocomplete="off" maxlength="40"></label><label>Пароль<input data-gp="1" value="${esc(g.pass)}" autocomplete="off" maxlength="40"></label></div>
     <form id="sf"><input id="sl" placeholder="Фамилия Имя Отчество" required maxlength="100"><button>Добавить</button></form>` +
     (st.length
-      ? `<div class="tw"><table><thead><tr><th class="percell" colspan="2"><div class="pr"><input class="per" data-per="1" value="${esc(g.period || '')}" placeholder="Период" aria-label="Период"><button data-sv="1">Сохранить</button></div></th><th colspan="${g.cols.length}"></th><th colspan="2"></th></tr><tr><th class="n">№</th><th class="fio">ФИО</th>${g.cols.map((c,i) => `<th><input class="hc" data-hc="${i}" value="${esc(c)}" placeholder="Дата" aria-label="Название столбца"><br><button class="ghost" data-dc="${i}" aria-label="Удалить столбец">✕</button></th>`).join('')}<th><button data-ac="1" aria-label="Добавить столбец" title="Добавить столбец">+</button></th><th></th></tr></thead><tbody>` +
-        st.map((s,i) => `<tr class="${s.left ? 'lf' : ''}"><td class="n">${i+1}</td><td class="fio"><span class="fe" contenteditable="plaintext-only" spellcheck="false" data-fe="${s.id}">${esc(s.fio)}</span>${s.left ? '<span class="lt">выбыл</span>' : ''}</td>${g.cols.map((c,j) => `<td>${gsel(s,j)}</td>`).join('')}<td></td><td><button class="ghost" data-ds="${s.id}" aria-label="Удалить ученика">✕</button></td></tr>`).join('') + '</tbody></table></div>'
+      ? `<div class="tw"><table><thead><tr><th class="percell" colspan="2"><div class="pr"><input class="per" data-per="1" value="${esc(g.period || '')}" placeholder="Период" aria-label="Период"><button data-sv="1">Сохранить</button></div></th><th colspan="${g.cols.length}"></th><th colspan="3"></th></tr><tr><th class="n">№</th><th class="fio">ФИО</th>${g.cols.map((c,i) => `<th><input class="hc" data-hc="${i}" value="${esc(c)}" placeholder="Дата" aria-label="Название столбца"><br><button class="ghost" data-dc="${i}" aria-label="Удалить столбец">✕</button></th>`).join('')}<th><button data-ac="1" aria-label="Добавить столбец" title="Добавить столбец">+</button></th><th class="pwh">Пароль</th><th></th></tr></thead><tbody>` +
+        st.map((s,i) => `<tr class="${s.left ? 'lf' : ''}"><td class="n">${i+1}</td><td class="fio"><span class="fe" contenteditable="plaintext-only" spellcheck="false" data-fe="${s.id}">${esc(s.fio)}</span>${s.left ? '<span class="lt">выбыл</span>' : ''}</td>${g.cols.map((c,j) => `<td>${gsel(s,j)}</td>`).join('')}<td></td><td class="pw"><span class="sp" contenteditable="plaintext-only" spellcheck="false" data-sp="${s.id}">${esc(s.pass || '')}</span></td><td><button class="ghost" data-ds="${s.id}" aria-label="Удалить ученика">✕</button></td></tr>`).join('') + '</tbody></table></div>'
       : '<div class="empty">В группе пока нет учеников.</div>');
     pb.innerHTML = slider(g, false);
   }
@@ -442,7 +610,9 @@ function showAuth() {
   role = null;
   currentUser = null;
   studentGroupId = null;
+  studentSelfId = null;
   sessionStorage.removeItem('zhurnal_student');
+  sessionStorage.removeItem('zhurnal_student_id');
   setTimeout(() => loginInp.focus(), 50);
 }
 
@@ -450,7 +620,9 @@ function showTeacher(user) {
   role = 'teacher';
   currentUser = user;
   studentGroupId = null;
+  studentSelfId = null;
   sessionStorage.removeItem('zhurnal_student');
+  sessionStorage.removeItem('zhurnal_student_id');
   authScreen.classList.remove('on');
   appEl.classList.add('on');
   document.getElementById('userbar').classList.add('on');
@@ -459,11 +631,14 @@ function showTeacher(user) {
   pull(true);
 }
 
-function showStudent(groupId) {
+function showStudent(groupId, selfId) {
   role = 'student';
   currentUser = null;
   studentGroupId = groupId;
+  studentSelfId = selfId || null;
   sessionStorage.setItem('zhurnal_student', groupId);
+  if (selfId) sessionStorage.setItem('zhurnal_student_id', selfId);
+  else sessionStorage.removeItem('zhurnal_student_id');
   authScreen.classList.remove('on');
   appEl.classList.add('on');
   document.getElementById('userbar').classList.add('on');
@@ -506,7 +681,13 @@ document.getElementById('btnLogin').onclick = async () => {
       return;
     }
     const groups = arr(raw.groups).filter(Boolean);
-    const g = groups.find(x => x.login === login && x.pass === password);
+    let g = null, selfId = null;
+    for (const x of groups) {
+      if (x.login !== login) continue;
+      if (x.pass === password) { g = x; break; }
+      const m = arr(x.students).filter(Boolean).find(st => st.pass && st.pass === password);
+      if (m) { g = x; selfId = m.id; break; }
+    }
     if (!g) {
       setAuthError('Неверный логин или пароль');
       setAuthLoading(false);
@@ -516,7 +697,7 @@ document.getElementById('btnLogin').onclick = async () => {
     D.groups = groups;
     normalize(D);
     migrate();
-    showStudent(g.id);
+    showStudent(g.id, selfId);
   } catch (e) {
     console.error(e);
     setAuthError('Нет связи с сервером');
@@ -554,11 +735,13 @@ auth.onAuthStateChanged(async user => {
       const raw = snap.val();
       if (raw && raw.groups) {
         const groups = arr(raw.groups).filter(Boolean);
-        if (groups.find(g => g.id === sid)) {
+        const selfId = sessionStorage.getItem('zhurnal_student_id');
+        const gg = groups.find(g => g.id === sid);
+        if (gg && (!selfId || arr(gg.students).filter(Boolean).some(st => st.id === selfId))) {
           D.groups = groups;
           normalize(D);
           migrate();
-          showStudent(sid);
+          showStudent(sid, selfId);
           return;
         }
       }
@@ -589,7 +772,8 @@ document.addEventListener('submit', e => {
   e.preventDefault();
   const f = document.getElementById('sl').value.trim().replace(/\s+/g, ' ');
   if (!f) return;
-  cur().students.push({id: uid(), fio: f, marks: []});
+  const g0 = cur();
+  g0.students.push({id: uid(), fio: f, pass: mkStuPass(g0), marks: []});
   save();
   render();
   document.getElementById('sl').focus();
@@ -602,6 +786,9 @@ document.addEventListener('click', async e => {
     ? D.groups.find(x => x.id === studentGroupId)
     : cur();
   if (!g && !t.dataset.dg) return;
+
+  // Both roles: выгрузка в .docx
+  if (t.dataset.ex) { if (isTeacher()) openExport(); return; }
 
   // Both roles: period chips navigation & arrows
   if (t.dataset.sa) {
@@ -726,7 +913,7 @@ document.addEventListener('input', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.target.dataset && e.target.dataset.fe && e.key === 'Enter') {
+  if (e.target.dataset && (e.target.dataset.fe || e.target.dataset.sp) && e.key === 'Enter') {
     e.preventDefault();
     e.target.blur();
   }
@@ -735,6 +922,22 @@ document.addEventListener('keydown', e => {
 document.addEventListener('focusout', async e => {
   if (!isTeacher()) return;
   const t = e.target, g = cur();
+  if (g && t.dataset && t.dataset.sp) {
+    const st = g.students.find(x => x.id === t.dataset.sp);
+    if (!st) return;
+    const nv = t.textContent.trim().replace(/\s+/g, '').slice(0, 40);
+    if (!nv || nv === st.pass) { t.textContent = st.pass || ''; return; }
+    if (nv === g.pass || g.students.some(x => x !== st && x.pass === nv)) {
+      toast('Такой пароль уже используется в группе', 'warn');
+      t.textContent = st.pass || '';
+      return;
+    }
+    if (!await ask('Изменить пароль ученика «' + st.fio + '» на «' + nv + '»?')) { t.textContent = st.pass || ''; return; }
+    st.pass = nv;
+    save();
+    t.textContent = nv;
+    return;
+  }
   if (!g || !t.dataset || !t.dataset.fe) return;
   const s = g.students.find(x => x.id === t.dataset.fe);
   if (!s) return;
@@ -759,6 +962,7 @@ document.addEventListener('change', async e => {
   const f = K[k][0], old = g[f], v = t.value.trim();
   if (v === old) return;
   if (!v) { t.value = old; return; }
+  if (k === 'gp' && g.students.some(x => x.pass === v)) { toast('Этот пароль уже у ученика группы', 'warn'); t.value = old; return; }
   if (await ask('Изменить ' + K[k][1] + ' «' + old + '» на «' + v + '»?')) {
     g[f] = v;
     save();
@@ -800,12 +1004,14 @@ async function pull(first) {
     const lc = normalize(JSON.parse(JSON.stringify({groups: D.groups})));
     if (ss(nd.groups) !== ss(lc.groups)) {
       D.groups = nd.groups;
-      migrate();
+      const ch = migrate();
+      if (ch && isTeacher()) save();
       if (isTeacher() && !D.groups.some(g => g.id === D.cur)) {
         D.cur = D.groups[0] ? D.groups[0].id : null;
       }
-      if (isStudent() && !D.groups.some(g => g.id === studentGroupId)) {
-        toast('Группа больше недоступна', 'warn');
+      const sg = D.groups.find(g => g.id === studentGroupId);
+      if (isStudent() && (!sg || (studentSelfId && !sg.students.some(x => x.id === studentSelfId)))) {
+        toast('Доступ больше недоступен', 'warn');
         showAuth();
         return;
       }
